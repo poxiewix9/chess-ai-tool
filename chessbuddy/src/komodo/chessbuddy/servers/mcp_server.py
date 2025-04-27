@@ -8,6 +8,10 @@ from komodo.chessbuddy.lib.chesscom import (
     get_latest_games as chesscom_get_latest_games,
     download_pgn as chesscom_download_pgn,
 )
+from komodo.chessbuddy.lib.pgnanalytics import (
+    get_user_games_df,
+    summarize_user_stats,
+)
 
 # This is the shared MCP server instance
 mcp = FastMCP(name="Chess Buddy MCP Server")
@@ -38,43 +42,38 @@ def get_current_time():
 def chesscom_profile(username: str) -> dict:
     """
     Retrieve the public profile information for a chess.com user.
-
-    Args:
-        username (str): The chess.com username.
-
-    Returns:
-        dict: The user's profile information as returned by the chess.com public API.
     """
     return chesscom_get_profile(username)
-
 
 @mcp.tool()
 def chesscom_latest_games(username: str, n: int = 10) -> dict:
     """
     Retrieve the latest games played by a chess.com user.
-
-    Args:
-        username (str): The chess.com username.
-        n (int, optional): Number of recent games to return (default 10).
-
-    Returns:
-        dict: The latest games data as returned by the chess.com public API.
     """
     return chesscom_get_latest_games(username, n)
 
-
 @mcp.tool()
-def chesscom_download_pgn(game_url: str) -> str:
+def chesscom_download_pgn(username: str, game_url: str) -> str:
     """
     Download the PGN for a given chess.com game.
-
-    Args:
-        game_url (str): The full URL of the chess.com game (from the 'url' field in game data).
-
-    Returns:
-        str: The PGN as a string.
     """
-    return chesscom_download_pgn(game_url)
+    return chesscom_download_pgn(username, game_url)
+
+@mcp.tool()
+def chesscom_analytics_games(username: str, max_months: int = 3) -> list:
+    """
+    Get recent games for a user as a list of dicts (DataFrame records).
+    """
+    df = get_user_games_df(username, max_months=max_months)
+    return df.to_dict(orient="records")
+
+@mcp.tool()
+def chesscom_analytics_stats(username: str, max_months: int = 3) -> dict:
+    """
+    Get summary stats for a user.
+    """
+    df = get_user_games_df(username, max_months=max_months)
+    return summarize_user_stats(df, username)
 
 
 mcp_native = mcp
