@@ -43,8 +43,8 @@ Chess Buddy consists of several core components that work together to fetch, ana
 flowchart TD
     A[User Input: Chess.com Username] --> B[Backend: Fetch Game Archives]
     B --> C[PGN Parsing & Data Structuring]
-    C --> D[Opening Detection (OpeningTree API)]
-    C --> E[Analysis Engine (AI/ML)]
+    C --> D["Opening Detection (OpeningTree API)"]
+    C --> E["Analysis Engine (AI/ML)"]
     D --> E
     E --> F[Personalized Insights & Recommendations]
     F --> G[Frontend Dashboard]

@@ -31,3 +31,17 @@ Openings they lose to the most
 ● UI: 
 ○ Simple interface where users see personalized insights 
 ○ Visuals like heatmaps, charts, or text-based summaries
+
+---
+
+## System Flowchart
+
+```mermaid
+flowchart TD
+    A[User Input: Chess.com Username] --> B[Backend: Fetch Game Archives]
+    B --> C[PGN Parsing & Data Structuring]
+    C --> D["Opening Detection (OpeningTree API)"]
+    C --> E["Analysis Engine (AI/ML)"]
+    D --> E
+    E --> F[Personalized Insights & Recommendations]
+    F --> G[Frontend Dashboard]
