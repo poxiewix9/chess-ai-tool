@@ -84,6 +84,9 @@ def chesscom_analytics_stats(username: str, max_months: int = 3) -> dict:
 
 mcp_native = mcp
 
+def main():
+    mcp.run(transport="sse")
+
 # Entry point to run the server
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    main()

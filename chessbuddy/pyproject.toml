@@ -13,7 +13,7 @@ dotenv=">=0.9.9"
 loguru=">=0.7.3"
 
 [project.scripts]
-chessbuddy = "komodo.chessbuddy:main"
+chessbuddy = "komodo.chessbuddy.servers.mcp_server:main"
 chessbuddy_mcp_client = "komodo.chessbuddy.scripts.mcp_client:main"
 
 [build-system]

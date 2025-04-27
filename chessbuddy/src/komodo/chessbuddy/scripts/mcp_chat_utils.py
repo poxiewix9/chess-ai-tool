@@ -42,6 +42,7 @@ def build_agent(
         model=model,
         add_base_tools=True,
         additional_authorized_imports=additional_authorized_imports or [],
+        max_steps=3
     )
 
 def run_agent_and_format(
