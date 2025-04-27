@@ -13,15 +13,33 @@ st.write("Chat with your Chess Buddy! Type your message below and press Enter.")
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+from komodo.chessbuddy.scripts.mcp_chat_utils import (
+    tool_collection_context,
+    build_agent,
+    get_agent_model,
+    build_prompt,
+    format_with_openai,
+)
 
-from komodo.chessbuddy.scripts.mcp_client_single import run_mcp_chat
+class ToolAgentSession:
+    def __init__(self):
+        self.ctx = tool_collection_context()
+        self.tool_collection = self.ctx.__enter__()
+        self.model = get_agent_model()
+        self.agent = build_agent(
+            tools=[*self.tool_collection.tools],
+            model=self.model,
+            additional_authorized_imports=["*"],
+        )
 
-@logfire.instrument(record_return=True)
-def call_mcp_client(user_message):
-    """
-    Call the MCP client chat function directly and return the response.
-    """
-    return run_mcp_chat(user_message)
+    def close(self):
+        if self.ctx:
+            self.ctx.__exit__(None, None, None)
+            self.ctx = None
+
+# Initialize ToolAgentSession if not already in session state
+if "tool_agent_session" not in st.session_state:
+    st.session_state.tool_agent_session = ToolAgentSession()
 
 # Display chat history
 for entry in st.session_state.chat_history:
@@ -39,8 +57,14 @@ if user_input:
     # Get bot response
     with logfire.span("Thinking..."):
         with st.spinner("Thinking..."):
-            bot_response = call_mcp_client(user_input)
+            prompt = build_prompt(user_input)
+            agent = st.session_state.tool_agent_session.agent
+            result = agent.run(prompt, reset=False)
+            bot_response = format_with_openai(user_input, result)
 
         st.session_state.chat_history.append({"role": "assistant", "content": bot_response})
         with st.chat_message("assistant"):
             st.markdown(bot_response)
+
+# Optionally, add a cleanup callback to close the context when the Streamlit session ends
+# (Streamlit does not provide a direct session end hook, but you could add a button to manually close)
