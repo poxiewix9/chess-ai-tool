@@ -1,16 +1,15 @@
 import modal
 
 from .config import get_relevant_modal_config, get_image_with_uv_install
-from ..servers.mcp_server import mcp_native
 
 config = get_relevant_modal_config()
 image = get_image_with_uv_install()
-app = modal.App("Sample", image=image)
+app = modal.App(name="ChessBuddy", image=image)
 
 
 @app.cls(
     image=image,
-    secrets=[config.aws_secret()],
+    secrets=[config.dotenv_secret()],
     min_containers=1,
     max_containers=3,
     memory=512,
@@ -21,12 +20,13 @@ app = modal.App("Sample", image=image)
 class McpServer:
     @modal.asgi_app()
     def app(self):
+        from komodo.chessbuddy.servers.mcp_server import mcp_native
         return mcp_native.sse_app()
 
 
 @app.cls(
     image=image,
-    secrets=[config.aws_secret()],
+    secrets=[config.dotenv_secret()],
     min_containers=1,
     max_containers=3,
     memory=512,
@@ -37,4 +37,5 @@ class McpServer:
 class FastApiServer:
     @modal.asgi_app()
     def app(self):
+        from komodo.chessbuddy.servers.fastapi_server import chess_buddy_app
         return chess_buddy_app

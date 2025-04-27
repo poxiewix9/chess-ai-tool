@@ -17,10 +17,10 @@ def init_logfire(service_name: str = ""):
                           environment=os.getenv("LOGFIRE_ENVIRONMENT", "development"),
                           distributed_tracing=True,
                           service_name=service_name)
+        
         logfire.instrument_pydantic(record='failure')
         logfire.instrument_mcp()
-        logfire.instrument_system_metrics()
-        
+        # logfire.instrument_system_metrics()
         # logfire.install_auto_tracing(modules=['fastapi', 'mcp'],
         #                             min_duration=0.01,
         #                             check_imported_modules='ignore')

@@ -1,9 +1,9 @@
 import os
 from enum import Enum
-from pathlib import Path
 from typing import Type
 
 import modal
+from dotenv.main import DotEnv, find_dotenv
 
 
 class ModalConfig:
@@ -16,10 +16,10 @@ class ModalConfig:
     ENV_NAME = "dev"
 
     # Base domain for all services
-    BASE_DOMAIN = "fleetwatch.ai"
+    BASE_DOMAIN = "thechessbuddy.com"
 
     # Modal org name
-    MODAL_ORG = "conexio"
+    MODAL_ORG = "komodo"
 
     @classmethod
     def get_modal_org(cls):
@@ -32,25 +32,6 @@ class ModalConfig:
         return {"ProdModalConfig": "prod", "StagingModalConfig": "staging"}.get(cls.__name__, "dev")
 
     @classmethod
-    def asm_secret_name(cls):
-        """Generate the AWS Secrets Manager secret name based on environment name."""
-        return f"conexio/coco/{cls.get_modal_secret_base()}"
-
-    @classmethod
-    def aws_secret_dict(cls):
-        """Generate secrets based on environment name."""
-        from conexio.core.config.secrets import resolve_secret
-        env: dict[str, str | None] = dict(resolve_secret(cls.asm_secret_name()).items())
-        env["COCO_SECRET_LOADED"] = "true"
-        env["LOGFIRE_ENVIRONMENT"] = "modal"
-        return env
-
-    @classmethod
-    def aws_secret(cls) -> modal.Secret:
-        """Generate secrets based on environment name."""
-        return modal.Secret.from_dict(cls.aws_secret_dict())
-
-    @classmethod
     def get_modal_domain(cls, app: str, server: str):
         """Generate domain based on environment name and app name."""
         return f"{cls.get_modal_org()}--{app.lower()}-{server.lower()}-modal-app.modal.run"
@@ -59,6 +40,19 @@ class ModalConfig:
     def get_modal_function(cls, app: str, server: str):
         """Generate domain based on environment name and app name."""
         return f"{cls.get_modal_org()}--{app.lower()}-{server.lower()}.modal.run"
+
+
+    @classmethod
+    def dotenv_secret_dict(cls):
+        """Generate secrets based on environment name."""
+        env: dict[str, str | None] = DotEnv(find_dotenv()).dict()
+        env["LOGFIRE_ENVIRONMENT"] = "modal"
+        return env
+
+    @classmethod
+    def dotenv_secret(cls) -> modal.Secret:
+        """Generate secrets based on environment name."""
+        return modal.Secret.from_dict(cls.dotenv_secret_dict())
 
 
 class ProdModalConfig(ModalConfig):
@@ -104,16 +98,10 @@ def ensure_modal_env():
         print("Setting MODAL_ENVIRONMENT to 'dev'")
 
 
+
+
 class ConexioModalApps(Enum):
-    COPILOT = "Copilot"
-    JUPYTER = "Jupyter"
-    LITELLM = "LiteLLM"
-    NGINX = "Nginx"
-    PREFECT = "Prefect"
-    TOOLS = "Tools"
-    VEHICLE = "Vehicle"
-    WEBSEARCH = "WebSearch"
-    WORKER = "Worker"
+    CHESSBUDDY = "ChessBuddy"
     TESTING = "Testing"
 
     def __str__(self):
@@ -126,7 +114,7 @@ class ConexioModalApps(Enum):
         return get_relevant_modal_config().get_modal_function(self.name, server)
 
 
-LOCAL_PYTHON_SOURCES = ["conexio"]
+LOCAL_PYTHON_SOURCES = ["komodo"]
 
 
 def get_image_with_uv_install():
@@ -137,43 +125,12 @@ def get_image_with_source_and_uv_install():
     return get_image_with_uv_install().add_local_python_source(*LOCAL_PYTHON_SOURCES, copy=True)
 
 
-def get_image_with_source():
-    return (
-        modal.Image.debian_slim()
-        .pip_install("boto3", "dotenv", "loguru")
-        .add_local_python_source(*LOCAL_PYTHON_SOURCES, copy=True)
-    )
-
-
-def get_nginx_custom_domains():
-    config = get_relevant_modal_config()
-    map = {"ProdModalConfig": "prod", "StagingModalConfig": "staging"}.get(config.__name__, None)
-    return [f"backend-{config.ENV_NAME.lower()}.{config.BASE_DOMAIN}"] if map else []
-
-
-def get_nginx_config_path():
-    return str(Path(__file__).parent / "nginx" / "nginx.conf")
-
-
-def get_jupyter_config_path():
-    return str(Path(__file__).parent / "jupyter" / "jupyter_lab_config.py")
-
-
 def get_workspaces_name():
     return "workspaces"
 
 
 def get_workspaces_volume():
     return modal.Volume.from_name(get_workspaces_name(), create_if_missing=True)
-
-
-def get_s3_bucket(s3_bucket_name: str):
-    config = get_relevant_modal_config()
-    return modal.CloudBucketMount(s3_bucket_name, secret=config.aws_secret())
-
-
-def get_demo_prefect_worker_pool():
-    return "demo-process-worker-pool"
 
 
 def read_file_from_modal(volume: modal.Volume, path: str):
