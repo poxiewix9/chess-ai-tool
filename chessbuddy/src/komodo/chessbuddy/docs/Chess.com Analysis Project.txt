@@ -1,0 +1,33 @@
+The goal of this project is to build an AI-powered tool that analyzes a user’s Chess.com games 
+and identifies personal weaknesses, such as problematic openings, frequent mistakes, and 
+recurring patterns, then provides tailored insights and recommendations to help improve their 
+play. 
+ Objectives 
+● Let users input their Chess.com username 
+ 
+● Automatically fetch and parse all their past games using the Chess.com API 
+ 
+● Analyze: 
+ 
+○ Most common openings played against 
+Openings they lose to the most 
+○ Mistakes/blunders/inaccuracies per game 
+○ Game outcomes, colors played, and move patterns 
+ 
+● Train a model to: 
+ 
+○ Identify trends and weaknesses 
+○ Provide actionable feedback 
+ Core Features 
+● Data Fetching: Pull games via Chess.com API 
+ 
+● Game Parsing: Convert PGN files into structured data 
+ 
+● Analysis Engine: 
+ 
+○ Track win/loss/draw stats by opening 
+○ Detect recurring mistake types or move sequences 
+ 
+● UI: 
+○ Simple interface where users see personalized insights 
+○ Visuals like heatmaps, charts, or text-based summaries
