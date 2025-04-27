@@ -13,6 +13,9 @@ dependencies = [
     "python-chess>=1.999",
     "pandas>=2.2.3",
     "numpy>=2.2.5",
+    "streamlit>=1.44.1",
+    "logfire[fastapi,requests,system-metrics,starlette]>=3.14.1,<4.0.0",
+    "pydantic-ai>=0.1.6",
 ]
 
 [build-system]

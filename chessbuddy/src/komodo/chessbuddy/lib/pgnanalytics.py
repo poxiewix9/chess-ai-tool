@@ -1,3 +1,4 @@
+import logfire
 import pandas as pd
 import numpy as np
 import chess.pgn
@@ -7,6 +8,7 @@ from chessdotcom import ChessDotComClient
 
 client = ChessDotComClient(user_agent="thechessbuddy/0.1.0 (https://github.com/ryanoberoi/thechessbuddy)")
 
+@logfire.instrument
 def fetch_archives(username: str) -> List[str]:
     """
     Fetch the list of archive URLs for a given Chess.com username using chess.com package.
@@ -14,6 +16,7 @@ def fetch_archives(username: str) -> List[str]:
     resp = client.get_player_game_archives(username)  # pyright: ignore [reportAttributeAccessIssue]
     return resp.json.get("archives", [])
 
+@logfire.instrument
 def fetch_games_pgn(username: str, year: int, month: int) -> List[str]:
     """
     Fetch all PGNs for a given user, year, and month using chess.com package.
@@ -27,6 +30,7 @@ def fetch_games_pgn(username: str, year: int, month: int) -> List[str]:
     games = pgn_text.strip().split("\n\n\n")
     return [g for g in games if g.strip()]
 
+@logfire.instrument
 def parse_pgns(pgn_list: List[str]) -> List[Dict[str, Any]]:
     """
     Parse a list of PGN strings into game data dictionaries.
@@ -57,6 +61,8 @@ def parse_pgns(pgn_list: List[str]) -> List[Dict[str, Any]]:
         })
     return games_data
 
+
+@logfire.instrument(record_return=True)
 def get_user_games_df(username: str, max_months: int = 3) -> pd.DataFrame:
     """
     Fetch and analyze recent games for a user, returning a DataFrame.
@@ -80,6 +86,7 @@ def get_user_games_df(username: str, max_months: int = 3) -> pd.DataFrame:
         df = df.sort_values("parsed_date", ascending=False).reset_index(drop=True)
     return df
 
+@logfire.instrument(record_return=True)
 def summarize_user_stats(df: pd.DataFrame, username: str) -> Dict[str, Any]:
     """
     Given a DataFrame of games, return summary statistics for the user.

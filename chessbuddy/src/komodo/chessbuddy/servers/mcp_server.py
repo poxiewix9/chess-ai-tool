@@ -1,5 +1,11 @@
 from datetime import datetime
 
+import logfire
+
+from komodo.chessbuddy.config.logging import init_logfire
+
+init_logfire("mcp_server_chessbuddy")
+
 from mcp.server.fastmcp import FastMCP
 
 from komodo.chessbuddy.lib.welcome import welcome
@@ -15,7 +21,7 @@ from komodo.chessbuddy.lib.pgnanalytics import (
 
 # This is the shared MCP server instance
 mcp = FastMCP(name="Chess Buddy MCP Server")
-
+logfire.instrument_starlette(mcp.sse_app())
 
 @mcp.tool()
 def welcome_tool(name: str) -> str:

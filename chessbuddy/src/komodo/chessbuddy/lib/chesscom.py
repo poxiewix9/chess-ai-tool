@@ -1,3 +1,4 @@
+import logfire
 from chessdotcom import ChessDotComClient
 from datetime import datetime, timezone
 import re
@@ -6,6 +7,7 @@ from typing import List, Tuple, Optional, Dict, Any
 client = ChessDotComClient(user_agent="thechessbuddy/0.1.0 (https://github.com/ryanoberoi/thechessbuddy)")
 
 
+@logfire.instrument(record_return=True)
 def get_profile(username: str) -> Dict[str, Any]:
     """
     Fetch the public profile of a chess.com user.
@@ -20,6 +22,7 @@ def get_profile(username: str) -> Dict[str, Any]:
     return response.json['player']
 
 
+@logfire.instrument
 def get_latest_games(username: str, n: int = 10) -> Dict[str, Any]:
     """
     Fetch the last N games played by a chess.com user (across months if needed).
@@ -52,6 +55,7 @@ def get_latest_games(username: str, n: int = 10) -> Dict[str, Any]:
     return {"games": all_games[:n]}
 
 
+@logfire.instrument
 def download_pgn(username: str, game_url: str) -> str:
     """
     Download the PGN for a given chess.com game.
@@ -75,6 +79,7 @@ def download_pgn(username: str, game_url: str) -> str:
     raise ValueError("PGN not found for this game URL and username")
 
 
+@logfire.instrument
 def _get_latest_archive_year_month(username: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Get the year and month of the latest game archive for a user.
@@ -91,6 +96,7 @@ def _get_latest_archive_year_month(username: str) -> Tuple[Optional[str], Option
     return parts[-2], parts[-1]
 
 
+@logfire.instrument
 def _get_games_by_month(username: str, year: str, month: str) -> Dict[str, Any]:
     """
     Fetch games for a user for a specific year and month.
@@ -99,6 +105,7 @@ def _get_games_by_month(username: str, year: str, month: str) -> Dict[str, Any]:
     return games_response.json
 
 
+@logfire.instrument
 def _extract_game_id(game_url: str) -> str:
     """
     Extract the game ID from a chess.com game URL.
@@ -112,6 +119,7 @@ def _extract_game_id(game_url: str) -> str:
     return m.group(1)
 
 
+@logfire.instrument
 def _recent_year_months(n: int) -> List[Tuple[str, str]]:
     """
     Generate (year, month) tuples for the current and previous n-1 months, in UTC.
