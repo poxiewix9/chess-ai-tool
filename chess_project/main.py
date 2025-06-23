@@ -105,7 +105,7 @@ if __name__ == "__main__":
             for move_num, move_uci in enumerate(game_row['Moves_UCI'], 1):
                 try:
                     move = chess.Move.from_uci(move_uci)
-                    math.floor(move_num)
+                    math.floor(move_num/2)
                     player_to_move = "White" if board.turn == chess.WHITE else "Black"
 
                     fen_before_move = board.fen()
