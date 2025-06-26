@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 
 
-GEMINI_API_KEY = "AIzaSyB43ECTgD2_8IvZcI2x1ZNtSyIirkz0sNs"
+GEMINI_API_KEY = "Secret"
 genai.configure(api_key=GEMINI_API_KEY)
 
 
