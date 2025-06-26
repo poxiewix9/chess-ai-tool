@@ -6,10 +6,30 @@ import tqdm
 import os
 from stockfish import Stockfish
 import numpy as np
+import google.generativeai as genai
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.width', 1000)
+
+GEMINI_API_KEY = "Secret"
+genai.configure(api_key=GEMINI_API_KEY)
+
+def generate_gemini_advice(forkCount, hangingCount, otherCount,pinCount):
+    prompt = f"""
+    You are a chess coach, give advice to the user based on the followind data.
+    They make blunders regarding forks {forkCount} amount of times.
+    They make blunders regarding hanging pieces {hangingCount} amount of times.
+    They make blunders regarding missed tactics and positional errors {otherCount} amount of times.
+    They make blunders regarding pins and skewers {pinCount} amount of times.
+
+"""
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"GEMINI ERROR: {e}"
 
 def get_pgn_file_path():
 
@@ -111,18 +131,21 @@ def classify_blunder(blunder_row, stockfish_engine):
 STOCKFISH_EXECUTABLE_PATH = "/opt/homebrew/bin/stockfish"
 
 try:
-
     engine = Stockfish(STOCKFISH_EXECUTABLE_PATH, parameters={"Contempt": 0, "Threads": 4, "Hash": 256})
     print(f"Stockfish engine initialized successfully from: {STOCKFISH_EXECUTABLE_PATH}")
 except Exception as e:
     print(f"Error initializing Stockfish engine. Please ensure the path is correct and Stockfish is installed.")
     print(f"Error details: {e}")
     print("Exiting.")
-    exit() # Exit the script if Stockfish cannot be initialized
-
+    exit()
 if __name__ == "__main__":
-    # Get the PGN file path from the user
     pgn_file_path = get_pgn_file_path()
+    user = "Xx_Galaxy_Dragon_xX"
+
+    forkCount = 0
+    pinCount = 0
+    otherCount = 0
+    hangingCount = 0
 
     games_data = []
     print("\nProcessing games from PGN file (this may take a moment)...")
@@ -133,10 +156,9 @@ if __name__ == "__main__":
             game_idx = 0
             while True:
                 game = chess.pgn.read_game(pgn_file)
-                if game is None: # Break loop if no more games are found
+                if game is None:
                     break
 
-                # Extract relevant information for each game
                 game_info = {
                     'game_index': game_idx,
                     'Event': game.headers.get('Event', 'N/A'),
@@ -171,7 +193,6 @@ if __name__ == "__main__":
             for move_num, move_uci in enumerate(game_row['Moves_UCI'], 1):
 
                 try:
-
                     move = chess.Move.from_uci(move_uci)
                     player_to_move = "White" if board.turn == chess.WHITE else "Black"
 
@@ -185,19 +206,16 @@ if __name__ == "__main__":
                         current_eval_dict = engine.get_evaluation()
                         current_cp_value = get_cp_value(current_eval_dict)
 
-
                         cp_change = prev_cp_value - current_cp_value
 
                         is_blunder = False
                         centipawn_loss = 0
 
                         if player_to_move == "White":
-
                             if cp_change > BLUNDER_CP_THRESHOLD:
                                 is_blunder = True
                                 centipawn_loss = cp_change
                         else:
-
                             if cp_change < -BLUNDER_CP_THRESHOLD:
                                 is_blunder = True
                                 centipawn_loss = abs(cp_change)
@@ -221,11 +239,9 @@ if __name__ == "__main__":
 
                         prev_cp_value = current_cp_value
                     else:
-
                         break
 
                 except ValueError:
-
                     break
                 except Exception:
                     break
@@ -239,12 +255,37 @@ if __name__ == "__main__":
 
             print("Classifying blunders...")
             blunders_df['Blunder_Type'] = blunders_df.apply(lambda row: classify_blunder(row, engine), axis=1)
-            blunders_df['Move_Number'] = np.ceil(blunders_df['Move_Number']/2)
+
+            blunders_df['Move_Number'] = np.ceil(blunders_df['Move_Number']/2).astype(int)
             print(blunders_df[['Game_Index', 'White','Move_Number', 'Black','Move_UCI',
                                'Player_Who_Blundered', 'Centipawn_Loss', 'Blunder_Type',
                                'Eval_Before_Blunder_CP', 'Eval_After_Blunder_CP']])
 
+            user_blunders_df = blunders_df[
+                ((blunders_df['White'] == user) & (blunders_df['Player_Who_Blundered'] == 'White')) |
+                ((blunders_df['Black'] == user) & (blunders_df['Player_Who_Blundered'] == 'Black'))
+            ]
 
+            if not user_blunders_df.empty:
+
+
+                forkCount = (user_blunders_df['Blunder_Type'] == "Fork Blunder").sum()
+                hangingCount = (user_blunders_df['Blunder_Type'] == "Hanging Piece").sum()
+                otherCount = (user_blunders_df['Blunder_Type'] == "Positional/Other Blunder").sum()
+                pinCount = (user_blunders_df['Blunder_Type'] == "Pin/Skewer Blunder").sum()
+
+                print(f"\n--- Blunder Summary for {user} ---")
+                print(f"Forks: {forkCount}")
+                print(f"Hanging Pieces: {hangingCount}")
+                print(f"Pins/Skewers: {pinCount}")
+                print(f"Positional/Other: {otherCount}")
+
+                to_markdown = generate_gemini_advice(forkCount, hangingCount, otherCount, pinCount)
+                print("\n--- Gemini Chess Coach Advice ---")
+                print(to_markdown)
+                print("---------------------------------")
+            else:
+                print(f"\nNo blunders found for user '{user}'.")
 
         else:
             print(f"\nNo blunders (with > {BLUNDER_CP_THRESHOLD} CP loss) found in the analyzed games.")
@@ -253,4 +294,5 @@ if __name__ == "__main__":
         print(f"Error: The PGN file '{pgn_file_path}' was not found.")
     except Exception as e:
         print(f"An unexpected error occurred during PGN processing or analysis: {e}")
+
 
