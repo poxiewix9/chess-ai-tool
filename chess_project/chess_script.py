@@ -105,9 +105,8 @@ def analyze_games(games, player_username):
         if current_game_rating > 0:
             player_rating = current_game_rating
 
-        # List of known loss outcomes from Chess.com API
         loss_outcomes = ["lose", "resigned", "timeout", "abandoned", "checkmated", "disconnected"]
-        # List of known draw outcomes from Chess.com API
+
         draw_outcomes = ["draw", "agreed", "repetition", "stalemate", "insufficientmaterial", "50move"]
 
         if opening_name not in opening_stats:
@@ -132,28 +131,25 @@ def analyze_games(games, player_username):
         elif player_outcome in draw_outcomes:
             opening_stats[opening_name]["draws"] += 1
             player_draws += 1
-        # No else branch here; if an outcome is not a known win, loss, or draw, it's simply not counted.
 
 
         if move_sequence and len(opening_stats[opening_name]["examples"]) < 3:
             if move_sequence not in opening_stats[opening_name]["examples"]:
                 opening_stats[opening_name]["examples"].append(move_sequence)
 
-    # Display stats
     st.subheader("Player Summary")
     st.write(f"Total games analyzed: {total_games}")
     st.write(f"Wins: {player_wins} | Losses: {player_losses} | Draws: {player_draws}")
     st.write(f"Estimated Rating: {player_rating}")
 
-    # --- Graphical Data ---
     st.subheader("Performance Visualizations")
 
 
     colors = {
-        'win': '#4CAF50',    # Green
+        'win': '#4CAF50',
         'lose': '#F44336',   # Red
         'draw': '#FFEB3B',   # Yellow
-        'bar': '#2196F3',    # Blue for general bars
+        'bar': '#2196F3',
         'text': '#E0E0E0'    # Light grey for text on dark background
     }
     plt.rcParams.update({
@@ -204,7 +200,6 @@ def analyze_games(games, player_username):
         st.info("No games to visualize yet.")
 
 
-    # Prepare data for opening charts
     sorted_openings_list = sorted(opening_stats.values(), key=lambda x: x["games"], reverse=True)
     filtered_openings = [op for op in sorted_openings_list if op['games'] > 0]
 

@@ -5,11 +5,11 @@ import math
 import tqdm
 import os
 from stockfish import Stockfish
+import numpy as np
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.width', 1000)
-
 
 def get_pgn_file_path():
 
@@ -36,6 +36,7 @@ def get_pgn_file_path():
 
 
 def get_cp_value(evaluation):
+
     if evaluation is None:
         return 0
 
@@ -46,8 +47,8 @@ def get_cp_value(evaluation):
         return 100000 * evaluation['value']
     return 0
 
-
 def classify_blunder(blunder_row, stockfish_engine):
+
     blunder_type = "Positional/Other Blunder"
 
     board_after_blunder = chess.Board(blunder_row['FEN_After_Blunder'])
@@ -85,14 +86,15 @@ def classify_blunder(blunder_row, stockfish_engine):
                     for attacked_square in temp_board_after_opponent_move.attacks(forking_piece_square):
                         attacked_piece = temp_board_after_opponent_move.piece_at(attacked_square)
                         if attacked_piece and attacked_piece.color == blundering_player_color and \
-                                attacked_piece.piece_type not in [chess.PAWN, chess.KING]:
+                           attacked_piece.piece_type not in [chess.PAWN, chess.KING]:
                             attacked_valuable_pieces_count += 1
 
                     if attacked_valuable_pieces_count >= 2:
                         return "Fork Blunder"
 
+
         for square, piece in board_after_blunder.piece_map().items():
-            if piece and piece.color == blundering_player_color and piece.piece_type != chess.KING:
+            if piece and piece.color == blundering_player_color:
                 if board_after_blunder.is_pinned(blundering_player_color, square):
                     return "Pin/Skewer Blunder"
 
@@ -116,7 +118,7 @@ except Exception as e:
     print(f"Error initializing Stockfish engine. Please ensure the path is correct and Stockfish is installed.")
     print(f"Error details: {e}")
     print("Exiting.")
-    exit()  # Exit the script if Stockfish cannot be initialized
+    exit() # Exit the script if Stockfish cannot be initialized
 
 if __name__ == "__main__":
     # Get the PGN file path from the user
@@ -131,7 +133,7 @@ if __name__ == "__main__":
             game_idx = 0
             while True:
                 game = chess.pgn.read_game(pgn_file)
-                if game is None:  # Break loop if no more games are found
+                if game is None: # Break loop if no more games are found
                     break
 
                 # Extract relevant information for each game
@@ -144,7 +146,7 @@ if __name__ == "__main__":
                     'White': game.headers.get('White', 'N/A'),
                     'Black': game.headers.get('Black', 'N/A'),
                     'Result': game.headers.get('Result', 'N/A'),
-                    'Moves_UCI': [x.uci() for x in game.mainline_moves()]  # Convert moves to UCI format
+                    'Moves_UCI': [x.uci() for x in game.mainline_moves()] # Convert moves to UCI format
                 }
                 games_data.append(game_info)
                 game_idx += 1
@@ -182,6 +184,7 @@ if __name__ == "__main__":
                         engine.set_fen_position(fen_after_move)
                         current_eval_dict = engine.get_evaluation()
                         current_cp_value = get_cp_value(current_eval_dict)
+
 
                         cp_change = prev_cp_value - current_cp_value
 
@@ -236,8 +239,8 @@ if __name__ == "__main__":
 
             print("Classifying blunders...")
             blunders_df['Blunder_Type'] = blunders_df.apply(lambda row: classify_blunder(row, engine), axis=1)
-
-            print(blunders_df[['Game_Index', 'White', 'Black', 'Move_Number', 'Move_UCI',
+            blunders_df['Move_Number'] = np.ceil(blunders_df['Move_Number']/2)
+            print(blunders_df[['Game_Index', 'White','Move_Number', 'Black','Move_UCI',
                                'Player_Who_Blundered', 'Centipawn_Loss', 'Blunder_Type',
                                'Eval_Before_Blunder_CP', 'Eval_After_Blunder_CP']])
 
