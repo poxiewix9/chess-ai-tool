@@ -18,17 +18,13 @@ import os
 from stockfish import Stockfish
 import io
 
-# --- Configuration ---
-# BEST PRACTICE: Use st.secrets for API keys
-# GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"] # If using secrets.toml
-GEMINI_API_KEY = "Secret"  # <-- IMPORTANT: Replace with your actual key
+
+GEMINI_API_KEY = "secret"
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Path to your Stockfish executable
-STOCKFISH_EXECUTABLE_PATH = "/opt/homebrew/bin/stockfish"  # Adjust if your path is different
+STOCKFISH_EXECUTABLE_PATH = "/opt/homebrew/bin/stockfish"
 
 
-# --- Helper Functions for Blunder Analysis ---
 
 def generate_gemini_advice_blunders(forkCount, hangingCount, otherCount, pinCount):
     prompt = f"""
@@ -74,15 +70,22 @@ def classify_blunder(blunder_row, stockfish_engine):
                 opponent_best_move = chess.Move.from_uci(opponent_best_move_uci)
                 temp_board_after_opponent_move = board_after_blunder.copy()
                 if opponent_best_move in temp_board_after_opponent_move.legal_moves:
-                    temp_board_after_opponent_move.push(opponent_best_move)
+                    # Check for Hanging Piece first
                     if board_after_blunder.is_capture(opponent_best_move):
                         captured_piece_square = opponent_best_move.to_square
                         captured_piece = board_after_blunder.piece_at(captured_piece_square)
                         if captured_piece and captured_piece.color == blundering_player_color and captured_piece.piece_type != chess.KING:
-                            if not board_after_blunder.attackers(not blundering_player_color, captured_piece_square):
+                            # CORRECTED LOGIC: Check for the blundering player's own defenders.
+                            if not board_after_blunder.attackers(blundering_player_color, captured_piece_square):
                                 return "Hanging Piece"
+
+                    # Push the move to check for forks
+                    temp_board_after_opponent_move.push(opponent_best_move)
+
+                    # Check for Fork
                     forking_piece_square = opponent_best_move.to_square
                     attacked_valuable_pieces_count = 0
+                    # Note: We check attacks from the square the opponent's piece moved TO
                     for attacked_square in temp_board_after_opponent_move.attacks(forking_piece_square):
                         attacked_piece = temp_board_after_opponent_move.piece_at(attacked_square)
                         if attacked_piece and attacked_piece.color == blundering_player_color and \
@@ -90,6 +93,7 @@ def classify_blunder(blunder_row, stockfish_engine):
                             attacked_valuable_pieces_count += 1
                     if attacked_valuable_pieces_count >= 2:
                         return "Fork Blunder"
+
         for square, piece in board_after_blunder.piece_map().items():
             if piece and piece.color == blundering_player_color:
                 if board_after_blunder.is_pinned(blundering_player_color, square):
@@ -160,6 +164,7 @@ def analyze_blunders(games_data, username, stockfish_engine):
 
     if not user_blunders_df.empty:
         st.subheader("Game-by-Game Blunder Details")
+        st.caption("This section only lists games where at least one blunder was found for the specified user.")
         unique_game_indices = user_blunders_df['Game_Index'].unique()
         games_data_map = {game['game_index']: game for game in games_data}
         for game_idx in unique_game_indices:
@@ -220,7 +225,6 @@ def analyze_blunders(games_data, username, stockfish_engine):
             st.markdown(advice)
 
 
-# --- Helper Functions for Opening Analysis ---
 
 def get_json_from_url_selenium(url, driver):
     try:
@@ -260,11 +264,10 @@ def generate_gemini_advice_openings(opening_full_name, stats, rating, example_mo
 
 def analyze_openings(games, player_username):
     grouped_openings = {}
-    total_games = len(games)
     player_wins, player_losses, player_draws = 0, 0, 0
+    processed_games_count = 0
     player_rating = 0
 
-    # --- MODIFIED: Added "Queen's Pawn Opening" and simplified some keywords ---
     opening_groups = {
         "Sicilian Defense": ["Sicilian"],
         "Indian Game": ["Indian", "Grünfeld", "Benoni", "Benko", "Catalan"],
@@ -285,7 +288,6 @@ def analyze_openings(games, player_username):
         "Reti Opening": ["Reti"],
         "Nimzowitsch-Larsen Attack": ["Larsen", "Nimzowitsch-Larsen"],
     }
-    # MODIFIED: Added "Queen's Pawn Opening" to the check order
     group_order = [
         "Queen's Gambit", "Queen's Pawn Opening", "Sicilian Defense", "Indian Game", "French Defense",
         "Caro-Kann Defense",
@@ -295,7 +297,21 @@ def analyze_openings(games, player_username):
     ]
 
     for game in games:
-        # Correctly extract the opening name from the most reliable source (eco URL).
+        # --- Player and Result Logic ---
+        white, black = game.get("white", {}), game.get("black", {})
+        player_outcome = "unknown"
+
+        if white.get("username", "").lower() == player_username:
+            player_rating = white.get("rating", player_rating)
+            player_outcome = white.get("result")
+        elif black.get("username", "").lower() == player_username:
+            player_rating = black.get("rating", player_rating)
+            player_outcome = black.get("result")
+        else:
+            continue
+
+        processed_games_count += 1
+
         final_opening_name = "Unknown Opening"
         eco_url = game.get("eco")
         pgn_str = game.get("pgn", "")
@@ -321,21 +337,9 @@ def analyze_openings(games, player_username):
             except Exception:
                 pass
 
-                # --- Player and Result Logic ---
-        white, black = game.get("white", {}), game.get("black", {})
-        player_outcome = "unknown"
-        if white.get("username", "").lower() == player_username:
-            player_rating = white.get("rating", player_rating)
-            player_outcome = white.get("result")
-        elif black.get("username", "").lower() == player_username:
-            player_rating = black.get("rating", player_rating)
-            player_outcome = black.get("result")
-        else:
-            continue
         loss_outcomes = ["lose", "resigned", "timeout", "abandoned", "checkmated", "disconnected"]
         draw_outcomes = ["draw", "agreed", "repetition", "stalemate", "insufficientmaterial", "50move"]
 
-        # --- MODIFIED: Grouping logic now ignores apostrophes for robust matching ---
         main_opening_key = None
         normalized_final_name = final_opening_name.lower().replace("'", "")
 
@@ -353,7 +357,6 @@ def analyze_openings(games, player_username):
 
         specific_variation_name = final_opening_name if main_opening_key != final_opening_name else "Main Line"
 
-        # --- Aggregation Logic ---
         if main_opening_key not in grouped_openings:
             grouped_openings[main_opening_key] = {"total_games": 0, "total_wins": 0, "total_losses": 0,
                                                   "total_draws": 0, "variations": {}}
@@ -386,7 +389,7 @@ def analyze_openings(games, player_username):
     # --- Display Logic ---
     st.subheader(f"Player Summary for {player_username}")
     col_sum1, col_sum2, col_sum3, col_sum4 = st.columns(4)
-    col_sum1.metric("Total Games", total_games);
+    col_sum1.metric("Total Games Analyzed", processed_games_count);
     col_sum2.metric("Wins", player_wins);
     col_sum3.metric("Losses", player_losses);
     col_sum4.metric("Draws", player_draws)
@@ -394,7 +397,6 @@ def analyze_openings(games, player_username):
     st.subheader("Opening Repertoire Breakdown")
     if not grouped_openings:
         st.info("No openings identified for detailed breakdown.");
-
         return
 
     sorted_main_openings = sorted(grouped_openings.items(), key=lambda item: item[1]["total_games"], reverse=True)
@@ -418,10 +420,8 @@ def analyze_openings(games, player_username):
                         st.markdown(
                             f"Games: {var_stats['games']} | Wins: {var_stats['wins']} | Losses: {var_stats['losses']} | Draws: {var_stats['draws']}")
 
-                        # Find the PGN for the example moves
                         pgn = ""
                         for game in games:
-                            # Heuristic to find a matching PGN. This could be slow on huge datasets.
                             if game.get('eco', '').endswith(var_stats['name'].replace(' ', '-')):
                                 pgn = game.get("pgn", "")
                                 break
@@ -461,6 +461,16 @@ def main():
 
     username = st.text_input("Chess.com Username", key="username_input").strip().lower()
 
+    st.info("💡 More games provide a more detailed analysis but will take longer to process. \n\nAs a guide, analyzing 100 games can take 3-5 minutes, primarily due to the move-by-move blunder check.")
+    games_to_fetch_count = st.number_input(
+        "Select the number of recent games to analyze",
+        min_value=5,
+        max_value=200,
+        value=20,
+        step=5,
+        key="games_count_input"
+    )
+
     if st.button("Analyze My Games", key="analyze_button") and username:
         with st.spinner("Fetching games and analyzing... This might take a moment, especially for blunder analysis."):
             chrome_options = Options()
@@ -483,7 +493,7 @@ def main():
                         "Failed to fetch game archives. Please check the username or ensure the user has public archives.")
                     return
 
-                all_games, games_to_fetch_count = [], 10
+                all_games = []
                 for archive_url in reversed(archives_data["archives"]):
                     if len(all_games) >= games_to_fetch_count: break
                     st.info(f"Fetching games from: {archive_url.split('/')[-2]}/{archive_url.split('/')[-1]}")
@@ -516,6 +526,7 @@ def main():
                         })
 
                     st.success(f"Successfully fetched {len(recent_games)} most recent games for analysis!")
+
                     tab1, tab2 = st.tabs(["Opening Analysis", "Blunder Analysis"])
                     with tab1:
                         analyze_openings(recent_games, username)
