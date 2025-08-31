@@ -73,7 +73,7 @@ The main chat interface is built with Streamlit.
 To launch the chat app:
 
 ```bash
-streamlit run streamlit_chat.py
+streamlit run chess_script.py
 ```
 
 This will start a local Streamlit server. Open the provided URL in your browser to interact with the Chess Buddy chat interface.
