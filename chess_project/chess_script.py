@@ -261,7 +261,7 @@ def generate_gemini_advice_openings(opening_full_name, stats, rating, example_mo
     except Exception as e:
         return f"GEMINI ERROR: {e}"
 
-
+#test implant
 def analyze_openings(games, player_username):
     grouped_openings = {}
     player_wins, player_losses, player_draws = 0, 0, 0
