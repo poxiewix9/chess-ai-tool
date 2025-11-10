@@ -19,7 +19,7 @@ from stockfish import Stockfish
 import io
 
 
-GEMINI_API_KEY = "AIzaSyA7xO2FXHtSvPYmhruq9tIKLNK9vvZzvso"
+GEMINI_API_KEY = "secret"
 genai.configure(api_key=GEMINI_API_KEY)
 
 STOCKFISH_EXECUTABLE_PATH = "/opt/homebrew/bin/stockfish"
